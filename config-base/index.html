@@ -1,65 +1,848 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Monero Node Status - DOMAINNAME</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
-            text-align: center;
-        }
-        .container {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-        }
-        h1 {
-            color: #333;
-        }
-        p {
-            font-size: 1.1rem;
-        }
-        .node-details {
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Public Monero node connection details for DOMAINNAME"
+        />
+        <meta name="theme-color" content="#ff6b00" />
+        <title>Monero Public Node | DOMAINNAME</title>
+        <style>
+            :root {
+                --bg-elevated: rgba(18, 22, 31, 0.88);
+                --text: #edf2f7;
+                --muted: #a8b3c7;
+                --accent-soft: rgba(255, 107, 0, 0.14);
+                --border: rgba(255, 255, 255, 0.1);
+                --success: #4ade80;
+                --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+                --radius-xl: 28px;
+                --radius-lg: 20px;
+                --radius-md: 14px;
+                --max-width: 1180px;
+            }
 
-    <div class="container">
-        <h1>Monero Node - DOMAINNAME</h1>
-        <p>This is a public Monero node providing P2P and RPC access.</p>
-        <div class="node-details">
-            <p><strong>Node Address:</strong> DOMAINNAME</p>
-            <p><strong>P2P Port:</strong> tcp://DOMAINNAME:18080</p>
-            <p><strong>RPC Port:</strong> https://DOMAINNAME:18089</p>
-	<!--<p><strong>ZMQ Port:</strong> tcp://DOMAINNAME:18083</p>-->
-        <!--<p><strong>Tor P2P:</strong> tcp://ONIONADDRESS:18084</p>-->
-        <!--<p><strong>Tor RPC:</strong> http://ONIONADDRESS:18089</p>--> 
-	<!--<p><strong>Tor ZMQ:</strong> tcp://ONIONADDRESS:18083</p>-->
-            <p><strong>Node Type:</strong> NODETYPE node</p>
-            <p><strong>Bandwidth:</strong> 50Mbps</p>
-            <p><strong>Max Peers:</strong> 25 In, 25 Out</p>
-            <p><strong>Location:</strong> LOCATION</p>
-            <p><strong>Log Level:</strong> 0</p>
-            <p><strong>Contact Details:</strong> <a href="mailto:OWNEREMAIL">OWNERNAME</a></p>
-        </div>
-        <p>Feel free to connect to this node and contribute to the Monero network.</p>
-        <p><a href="https://github.com/John-Doggett/Monerod-Node-Setup-Scripts/">Learn to host your own Monero node!</p>
-    </div>
+            * {
+                box-sizing: border-box;
+            }
 
-</body>
+            html {
+                scroll-behavior: smooth;
+            }
+
+            body {
+                margin: 0;
+                min-height: 100vh;
+                font-family:
+                    Inter,
+                    ui-sans-serif,
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--text);
+                background:
+                    radial-gradient(
+                        circle at top left,
+                        rgba(255, 107, 0, 0.18),
+                        transparent 30%
+                    ),
+                    radial-gradient(
+                        circle at top right,
+                        rgba(111, 66, 193, 0.14),
+                        transparent 26%
+                    ),
+                    linear-gradient(
+                        180deg,
+                        #0a0c11 0%,
+                        #0f131b 45%,
+                        #090b10 100%
+                    );
+                line-height: 1.6;
+            }
+
+            a {
+                color: inherit;
+            }
+
+            .page-shell {
+                width: min(calc(100% - 32px), var(--max-width));
+                margin: 0 auto;
+            }
+
+            /* ── Header ──────────────────────────────────────────────── */
+            .site-header {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                backdrop-filter: blur(18px);
+                background: rgba(11, 13, 18, 0.72);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+
+            .site-header-inner {
+                width: min(calc(100% - 32px), var(--max-width));
+                margin: 0 auto;
+                min-height: 72px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+            }
+
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                text-decoration: none;
+                color: var(--text);
+            }
+
+            .brand-mark {
+                width: 42px;
+                height: 42px;
+                display: grid;
+                place-items: center;
+                border-radius: 50%;
+                background: linear-gradient(
+                    180deg,
+                    #ff8a33 0%,
+                    #ff6b00 58%,
+                    #f05a00 100%
+                );
+                color: #fff;
+                box-shadow: 0 12px 24px rgba(255, 107, 0, 0.3);
+                font-size: 1.05rem;
+                flex-shrink: 0;
+            }
+
+            .brand-text {
+                display: flex;
+                flex-direction: column;
+                line-height: 1.2;
+            }
+
+            .brand-text small {
+                color: var(--muted);
+                font-weight: 500;
+                font-size: 0.78rem;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+            }
+
+            .header-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 16px;
+                border: 1px solid var(--border);
+                border-radius: 999px;
+                text-decoration: none;
+                color: var(--muted);
+                background: rgba(255, 255, 255, 0.03);
+                font-size: 0.92rem;
+                transition:
+                    color 0.2s ease,
+                    border-color 0.2s ease,
+                    background 0.2s ease;
+            }
+
+            .header-link:hover,
+            .header-link:focus-visible {
+                color: var(--text);
+                border-color: rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.07);
+                outline: none;
+            }
+
+            /* ── Shared panel base ───────────────────────────────────── */
+            .card {
+                background: var(--bg-elevated);
+                border: 1px solid var(--border);
+                box-shadow: var(--shadow);
+                backdrop-filter: blur(18px);
+            }
+
+            /* ── Buttons ─────────────────────────────────────────────── */
+            .button {
+                appearance: none;
+                border: 0;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                min-height: 48px;
+                padding: 0 20px;
+                border-radius: 999px;
+                font-weight: 700;
+                font-size: 0.95rem;
+                transition:
+                    transform 0.18s ease,
+                    box-shadow 0.18s ease,
+                    opacity 0.18s ease;
+            }
+
+            .button:hover,
+            .button:focus-visible {
+                transform: translateY(-1px);
+                outline: none;
+            }
+
+            .button-primary {
+                background: linear-gradient(180deg, #ff8730 0%, #ff6b00 100%);
+                color: #fff;
+                box-shadow: 0 10px 22px rgba(255, 107, 0, 0.28);
+            }
+
+            .button-primary:hover {
+                box-shadow: 0 14px 28px rgba(255, 107, 0, 0.36);
+            }
+
+            .button-secondary {
+                background: rgba(255, 255, 255, 0.05);
+                color: var(--text);
+                border: 1px solid var(--border);
+            }
+
+            .button-secondary:hover {
+                background: rgba(255, 255, 255, 0.09);
+            }
+
+            /* ── Typography ──────────────────────────────────────────── */
+            h1,
+            h2,
+            h3,
+            p {
+                margin-top: 0;
+            }
+
+            .eyebrow {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 14px;
+                border-radius: 999px;
+                background: var(--accent-soft);
+                color: #ffd5ba;
+                font-size: 0.82rem;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+            }
+
+            .status-dot {
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                background: var(--success);
+                box-shadow: 0 0 0 7px rgba(74, 222, 128, 0.12);
+                flex-shrink: 0;
+            }
+
+            /* ── Hero ────────────────────────────────────────────────── */
+            .hero {
+                padding: 68px 0 36px;
+            }
+
+            .hero-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+                gap: 24px;
+                align-items: stretch;
+            }
+
+            .hero-card {
+                border-radius: var(--radius-xl);
+                padding: 36px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .hero-card::before {
+                content: "";
+                position: absolute;
+                inset: auto auto -15% -8%;
+                width: 300px;
+                height: 300px;
+                background: radial-gradient(
+                    circle,
+                    rgba(255, 107, 0, 0.14),
+                    transparent 65%
+                );
+                pointer-events: none;
+            }
+
+            .hero-card h1 {
+                margin: 20px 0 14px;
+                font-size: clamp(2.2rem, 4.5vw, 4rem);
+                line-height: 1;
+                letter-spacing: -0.04em;
+            }
+
+            .hero-lead {
+                font-size: 1.06rem;
+                color: var(--muted);
+                max-width: 58ch;
+                margin-bottom: 0;
+            }
+
+            .hero-actions {
+                margin-top: 28px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            /* ── Summary panel ───────────────────────────────────────── */
+            .summary-panel {
+                border-radius: var(--radius-xl);
+                padding: 28px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .summary-panel-heading {
+                font-size: 1rem;
+                font-weight: 700;
+                margin-bottom: 0;
+                color: #fff;
+            }
+
+            .summary-list {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+                display: grid;
+                gap: 0;
+            }
+
+            .summary-list li {
+                display: grid;
+                grid-template-columns: 100px 1fr;
+                gap: 12px;
+                align-items: baseline;
+                padding: 11px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            }
+
+            .summary-list li:first-child {
+                padding-top: 0;
+            }
+
+            .summary-list li:last-child {
+                border-bottom: 0;
+                padding-bottom: 0;
+            }
+
+            .sl-label {
+                color: var(--muted);
+                font-size: 0.88rem;
+            }
+
+            .sl-value {
+                font-weight: 600;
+                font-size: 0.95rem;
+                word-break: break-word;
+            }
+
+            .sl-value a {
+                color: #fff;
+                text-underline-offset: 3px;
+                text-decoration-color: rgba(255, 255, 255, 0.25);
+            }
+
+            .summary-note {
+                margin: 0;
+                padding: 13px 15px;
+                border-radius: var(--radius-md);
+                background: rgba(255, 255, 255, 0.04);
+                color: var(--muted);
+                font-size: 0.9rem;
+                line-height: 1.55;
+            }
+
+            /* ── Section chrome ──────────────────────────────────────── */
+            .section {
+                padding: 10px 0 28px;
+            }
+
+            .section-header {
+                margin-bottom: 20px;
+            }
+
+            .section-header h2 {
+                font-size: clamp(1.45rem, 2vw, 2rem);
+                letter-spacing: -0.03em;
+                margin-bottom: 6px;
+            }
+
+            .section-header p {
+                color: var(--muted);
+                margin-bottom: 0;
+                max-width: 58ch;
+                font-size: 0.97rem;
+            }
+
+            /* ── Metrics grid ────────────────────────────────────────── */
+            .metrics-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 16px;
+            }
+
+            .metric-card {
+                border-radius: var(--radius-lg);
+                padding: 22px;
+            }
+
+            .metric-label {
+                display: block;
+                margin-bottom: 8px;
+                color: var(--muted);
+                font-size: 0.88rem;
+                letter-spacing: 0.01em;
+            }
+
+            .metric-value {
+                margin: 0;
+                font-size: 1.5rem;
+                line-height: 1.1;
+                letter-spacing: -0.025em;
+                font-weight: 700;
+            }
+
+            /* ── Endpoints grid ──────────────────────────────────────── */
+            .endpoint-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+                gap: 18px;
+            }
+
+            .endpoint-card {
+                border-radius: var(--radius-lg);
+                padding: 26px;
+            }
+
+            .endpoint-badge {
+                display: inline-flex;
+                align-items: center;
+                min-height: 28px;
+                padding: 0 10px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: #e0e8f4;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                margin-bottom: 14px;
+            }
+
+            .endpoint-card h3 {
+                font-size: 1.08rem;
+                margin-bottom: 8px;
+            }
+
+            .endpoint-card > p {
+                color: var(--muted);
+                font-size: 0.94rem;
+                margin-bottom: 16px;
+            }
+
+            .endpoint-code {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                white-space: nowrap;
+                padding: 13px 16px;
+                border-radius: var(--radius-md);
+                background: rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                color: #ffeedd;
+                font-family:
+                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                    "Liberation Mono", monospace;
+                font-size: 0.93rem;
+            }
+
+            .endpoint-meta {
+                margin-top: 12px;
+                color: var(--muted);
+                font-size: 0.88rem;
+            }
+
+            /* ── Footer card ─────────────────────────────────────────── */
+            .footer-section {
+                padding: 10px 0 60px;
+            }
+
+            .footer-card {
+                border-radius: var(--radius-xl);
+                padding: 30px;
+                display: grid;
+                grid-template-columns: minmax(0, 1.3fr) auto;
+                gap: 24px;
+                align-items: center;
+            }
+
+            .footer-card p:last-child {
+                margin-bottom: 0;
+            }
+
+            .footer-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+                flex-shrink: 0;
+            }
+
+            /* ── Utility ─────────────────────────────────────────────── */
+            .muted {
+                color: var(--muted);
+            }
+
+            .small {
+                font-size: 0.9rem;
+            }
+
+            /* ── Site footer ─────────────────────────────────────────── */
+            .site-footer {
+                padding: 0 0 36px;
+                text-align: center;
+                color: var(--muted);
+                font-size: 0.88rem;
+            }
+
+            /* ── Responsive ──────────────────────────────────────────── */
+            @media (max-width: 960px) {
+                .hero-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .footer-card {
+                    grid-template-columns: 1fr;
+                }
+
+                .footer-actions {
+                    justify-content: flex-start;
+                }
+            }
+
+            @media (max-width: 640px) {
+                .hero {
+                    padding-top: 40px;
+                }
+
+                .hero-card,
+                .summary-panel,
+                .metric-card,
+                .endpoint-card,
+                .footer-card {
+                    padding: 22px;
+                }
+
+                .summary-list li {
+                    grid-template-columns: 1fr;
+                    gap: 3px;
+                }
+
+                .header-link {
+                    display: none;
+                }
+
+                .endpoint-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header class="site-header" aria-label="Site header">
+            <div class="site-header-inner">
+                <a class="brand" href="#" aria-label="Monero public node home">
+                    <div class="brand-mark" aria-hidden="true">&#9745;</div>
+                    <div class="brand-text">
+                        <span>Monero Public Node</span>
+                        <small>DOMAINNAME</small>
+                    </div>
+                </a>
+                <a
+                    class="header-link"
+                    href="https://github.com/John-Doggett/Monerod-Node-Setup-Scripts/"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                >
+                    Host your own node &#8599;
+                </a>
+            </div>
+        </header>
+
+        <main>
+            <!-- ═══════════════════════ HERO ═══════════════════════════ -->
+            <section class="hero" aria-labelledby="hero-heading">
+                <div class="page-shell hero-grid">
+                    <article class="card hero-card">
+                        <div class="eyebrow">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            Public infrastructure for the Monero network
+                        </div>
+                        <h1 id="hero-heading">
+                            Connect to a privacy-first node at DOMAINNAME
+                        </h1>
+                        <p class="hero-lead">
+                            This server provides open Monero P2P and restricted
+                            RPC access so wallets, services, and infrastructure
+                            can connect reliably. Use the endpoints below to
+                            integrate with this NODETYPE node.
+                        </p>
+                        <div class="hero-actions">
+                            <a class="button button-primary" href="#endpoints"
+                                >View endpoints</a
+                            >
+                            <a
+                                class="button button-secondary"
+                                href="mailto:OWNEREMAIL"
+                            >
+                                Contact operator
+                            </a>
+                        </div>
+                    </article>
+
+                    <aside
+                        class="card summary-panel"
+                        aria-labelledby="overview-heading"
+                    >
+                        <p class="summary-panel-heading" id="overview-heading">
+                            Node overview
+                        </p>
+                        <ul class="summary-list">
+                            <li>
+                                <span class="sl-label">Address</span>
+                                <span class="sl-value">DOMAINNAME</span>
+                            </li>
+                            <li>
+                                <span class="sl-label">Node type</span>
+                                <span class="sl-value">NODETYPE node</span>
+                            </li>
+                            <li>
+                                <span class="sl-label">Location</span>
+                                <span class="sl-value">LOCATION</span>
+                            </li>
+                            <li>
+                                <span class="sl-label">Operator</span>
+                                <span class="sl-value">
+                                    <a href="mailto:OWNEREMAIL">OWNERNAME</a>
+                                </span>
+                            </li>
+                        </ul>
+                        <p class="summary-note">
+                            Public endpoints are intended for community access
+                            and integration. Respect shared resources and
+                            configure clients responsibly.
+                        </p>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- ══════════════════ NETWORK PROFILE ═════════════════════ -->
+            <section class="section" aria-labelledby="profile-heading">
+                <div class="page-shell">
+                    <div class="section-header">
+                        <h2 id="profile-heading">Network profile</h2>
+                        <p>
+                            Core characteristics of this public Monero node and
+                            the policies configured during setup.
+                        </p>
+                    </div>
+                    <div class="metrics-grid">
+                        <article class="card metric-card">
+                            <span class="metric-label">P2P Port</span>
+                            <p class="metric-value">18080</p>
+                        </article>
+                        <article class="card metric-card">
+                            <span class="metric-label">RPC Port</span>
+                            <p class="metric-value">18089</p>
+                        </article>
+                        OPTIONAL_ZMQ_METRIC_START
+                        <article class="card metric-card">
+                            <span class="metric-label">ZMQ Port</span>
+                            <p class="metric-value">18083</p>
+                        </article>
+                        OPTIONAL_ZMQ_METRIC_END
+                        <article class="card metric-card">
+                            <span class="metric-label">Max Peers</span>
+                            <p class="metric-value">25 / 25</p>
+                        </article>
+                        <article class="card metric-card">
+                            <span class="metric-label">Bandwidth</span>
+                            <p class="metric-value">50 Mbps</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ════════════════════ ENDPOINTS ═════════════════════════ -->
+            <section
+                class="section"
+                id="endpoints"
+                aria-labelledby="endpoints-heading"
+            >
+                <div class="page-shell">
+                    <div class="section-header">
+                        <h2 id="endpoints-heading">Connection endpoints</h2>
+                        <p>
+                            Use the addresses below to connect wallets, clients,
+                            or supporting infrastructure to this node.
+                        </p>
+                    </div>
+                    <div class="endpoint-grid">
+                        <article class="card endpoint-card">
+                            <span class="endpoint-badge">P2P</span>
+                            <h3>Peer-to-peer network access</h3>
+                            <p>
+                                Use this endpoint for node peering and
+                                participation in the public Monero network.
+                            </p>
+                            <code class="endpoint-code"
+                                >tcp://DOMAINNAME:18080</code
+                            >
+                            <div class="endpoint-meta">
+                                Public clearnet P2P endpoint
+                            </div>
+                        </article>
+
+                        <article class="card endpoint-card">
+                            <span class="endpoint-badge">Restricted RPC</span>
+                            <h3>Wallet and application RPC</h3>
+                            <p>
+                                Restricted remote procedure calls are available
+                                over HTTPS for safer public use.
+                            </p>
+                            <code class="endpoint-code"
+                                >https://DOMAINNAME:18089</code
+                            >
+                            <div class="endpoint-meta">
+                                TLS-enabled RPC endpoint
+                            </div>
+                        </article>
+
+                        OPTIONAL_ZMQ_ENDPOINT_START
+                        <article class="card endpoint-card">
+                            <span class="endpoint-badge">ZMQ</span>
+                            <h3>ZeroMQ publisher endpoint</h3>
+                            <p>
+                                Use this endpoint when integrating with services
+                                such as P2Pool or event-driven tooling.
+                            </p>
+                            <code class="endpoint-code"
+                                >tcp://DOMAINNAME:18083</code
+                            >
+                            <div class="endpoint-meta">
+                                Optional event and notification transport
+                            </div>
+                        </article>
+                        OPTIONAL_ZMQ_ENDPOINT_END
+                        OPTIONAL_TOR_P2P_ENDPOINT_START
+                        <article class="card endpoint-card">
+                            <span class="endpoint-badge">Tor P2P</span>
+                            <h3>Anonymous peer-to-peer access</h3>
+                            <p>
+                                Use this hidden service for Tor-routed peer
+                                connectivity.
+                            </p>
+                            <code class="endpoint-code"
+                                >tcp://ONIONADDRESS:18084</code
+                            >
+                            <div class="endpoint-meta">
+                                Tor hidden service &mdash; P2P traffic
+                            </div>
+                        </article>
+                        OPTIONAL_TOR_P2P_ENDPOINT_END
+                        OPTIONAL_TOR_RPC_ENDPOINT_START
+                        <article class="card endpoint-card">
+                            <span class="endpoint-badge">Tor RPC</span>
+                            <h3>Anonymous RPC access</h3>
+                            <p>
+                                Restricted RPC is also exposed through the onion
+                                service when Tor is enabled.
+                            </p>
+                            <code class="endpoint-code"
+                                >http://ONIONADDRESS:18089</code
+                            >
+                            <div class="endpoint-meta">
+                                Tor hidden service &mdash; RPC traffic
+                            </div>
+                        </article>
+                        OPTIONAL_TOR_RPC_ENDPOINT_END
+                        OPTIONAL_TOR_ZMQ_ENDPOINT_START
+                        <article class="card endpoint-card">
+                            <span class="endpoint-badge">Tor ZMQ</span>
+                            <h3>Anonymous ZeroMQ access</h3>
+                            <p>
+                                Optional Tor-routed ZMQ access for compatible
+                                subscribers and infrastructure components.
+                            </p>
+                            <code class="endpoint-code"
+                                >tcp://ONIONADDRESS:18083</code
+                            >
+                            <div class="endpoint-meta">
+                                Tor hidden service &mdash; ZMQ transport
+                            </div>
+                        </article>
+                        OPTIONAL_TOR_ZMQ_ENDPOINT_END
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════ ABOUT / FOOTER CARD ════════════════ -->
+            <section class="footer-section" aria-labelledby="about-heading">
+                <div class="page-shell">
+                    <div class="card footer-card">
+                        <div>
+                            <h2 id="about-heading">About this node</h2>
+                            <p>
+                                This page is generated by the Monerod node setup
+                                scripts and provides a public summary of
+                                available connection methods. All endpoints
+                                expose only restricted, read-safe access.
+                            </p>
+                            <p class="muted small">
+                                Log level: 0 &nbsp;&middot;&nbsp; Contact:
+                                <a href="mailto:OWNEREMAIL">OWNERNAME</a>
+                            </p>
+                        </div>
+                        <div class="footer-actions">
+                            <a
+                                class="button button-primary"
+                                href="mailto:OWNEREMAIL"
+                            >
+                                Report an issue
+                            </a>
+                            <a
+                                class="button button-secondary"
+                                href="https://github.com/John-Doggett/Monerod-Node-Setup-Scripts/"
+                                rel="noopener noreferrer"
+                                target="_blank"
+                            >
+                                Host your own
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer" aria-label="Page footer">
+            <div class="page-shell">Monero public node &mdash; DOMAINNAME</div>
+        </footer>
+    </body>
 </html>
