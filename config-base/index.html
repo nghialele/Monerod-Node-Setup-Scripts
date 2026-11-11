@@ -1,65 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Monero Node Status - DOMAINNAME</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
-            text-align: center;
-        }
-        .container {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-        }
-        h1 {
-            color: #333;
-        }
-        p {
-            font-size: 1.1rem;
-        }
-        .node-details {
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@@NODE_NAME@@ — Public Monero Node</title>
+<style>
+:root {
+	--bg: #ffffff;
+	--text: #1a1a1a;
+	--muted: #6b6b6b;
+	--border: #e4e4e4;
+	--surface: #fafafa;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+	background: var(--bg);
+	color: var(--text);
+	display: flex;
+	justify-content: center;
+	padding: 64px 20px;
+	line-height: 1.5;
+}
+.column { width: 100%; max-width: 640px; }
+.eyebrow {
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	color: var(--muted);
+	margin-bottom: 12px;
+}
+h1 { font-size: 28px; font-weight: 650; margin-bottom: 8px; overflow-wrap: anywhere; }
+.subtitle { color: var(--muted); margin-bottom: 28px; }
+.card {
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: var(--surface);
+}
+dl { display: block; }
+.row {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	padding: 14px 18px;
+	border-bottom: 1px solid var(--border);
+}
+.row:last-child { border-bottom: none; }
+dt {
+	flex: 0 0 110px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--muted);
+	padding-top: 2px;
+}
+dd {
+	flex: 1;
+	font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+	font-size: 14px;
+	overflow-wrap: anywhere;
+	min-width: 0;
+}
+dd a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.copy-btn {
+	flex: 0 0 auto;
+	align-self: center;
+	font-size: 11px;
+	padding: 3px 8px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--bg);
+	color: var(--muted);
+	cursor: pointer;
+}
+.copy-btn:hover { border-color: var(--muted); color: var(--text); }
+footer {
+	margin-top: 28px;
+	color: var(--muted);
+	font-size: 13px;
+}
+footer a { color: var(--text); }
+</style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>Monero Node - DOMAINNAME</h1>
-        <p>This is a public Monero node providing P2P and RPC access.</p>
-        <div class="node-details">
-            <p><strong>Node Address:</strong> DOMAINNAME</p>
-            <p><strong>P2P Port:</strong> tcp://DOMAINNAME:18080</p>
-            <p><strong>RPC Port:</strong> https://DOMAINNAME:18089</p>
-	<!--<p><strong>ZMQ Port:</strong> tcp://DOMAINNAME:18083</p>-->
-        <!--<p><strong>Tor P2P:</strong> tcp://ONIONADDRESS:18084</p>-->
-        <!--<p><strong>Tor RPC:</strong> http://ONIONADDRESS:18089</p>--> 
-	<!--<p><strong>Tor ZMQ:</strong> tcp://ONIONADDRESS:18083</p>-->
-            <p><strong>Node Type:</strong> NODETYPE node</p>
-            <p><strong>Bandwidth:</strong> 50Mbps</p>
-            <p><strong>Max Peers:</strong> 25 In, 25 Out</p>
-            <p><strong>Location:</strong> LOCATION</p>
-            <p><strong>Log Level:</strong> 0</p>
-            <p><strong>Contact Details:</strong> <a href="mailto:OWNEREMAIL">OWNERNAME</a></p>
-        </div>
-        <p>Feel free to connect to this node and contribute to the Monero network.</p>
-        <p><a href="https://github.com/John-Doggett/Monerod-Node-Setup-Scripts/">Learn to host your own Monero node!</p>
-    </div>
-
+<div class="column">
+	<p class="eyebrow">Public Monero Node</p>
+	<h1>@@NODE_NAME@@</h1>
+	<p class="subtitle">A public Monero node. Feel free to connect — every peer keeps the network private.</p>
+	<div class="card">
+	<dl>
+		<div class="row"><dt>P2P</dt><dd>@@P2P_ADDRESS@@</dd><button class="copy-btn" data-copy="@@P2P_ADDRESS@@">copy</button></div>
+		<div class="row"><dt>RPC</dt><dd>@@RPC_ADDRESS@@</dd><button class="copy-btn" data-copy="@@RPC_ADDRESS@@">copy</button></div>
+<!-- BEGIN:zmq -->
+		<div class="row"><dt>ZMQ</dt><dd>@@ZMQ_ADDRESS@@</dd><button class="copy-btn" data-copy="@@ZMQ_ADDRESS@@">copy</button></div>
+<!-- END:zmq -->
+<!-- BEGIN:tor -->
+		<div class="row"><dt>Tor P2P</dt><dd>@@ONION_ADDRESS@@</dd><button class="copy-btn" data-copy="@@ONION_ADDRESS@@">copy</button></div>
+<!-- BEGIN:zmq_tor -->
+		<div class="row"><dt>Tor ZMQ</dt><dd>@@ZMQ_ADDRESS@@</dd><button class="copy-btn" data-copy="@@ZMQ_ADDRESS@@">copy</button></div>
+<!-- END:zmq_tor -->
+		<div class="row"><dt>Type</dt><dd>@@NODE_TYPE@@ node</dd></div>
+<!-- BEGIN:location -->
+		<div class="row"><dt>Location</dt><dd>@@LOCATION@@</dd></div>
+<!-- END:location -->
+<!-- BEGIN:bandwidth -->
+		<div class="row"><dt>Bandwidth</dt><dd>@@BANDWIDTH@@</dd></div>
+<!-- END:bandwidth -->
+<!-- BEGIN:contact -->
+		<div class="row"><dt>Contact</dt><dd><a href="mailto:@@OWNER_EMAIL@@">@@OWNER_NAME@@</a></dd></div>
+<!-- END:contact -->
+	</dl>
+	</div>
+	<footer>
+		<p>Self-hosting is the future. This one's already running.</p>
+		<p><a href="@@REPO_URL@@">host your own node →</a></p>
+	</footer>
+</div>
+<script>
+(function () {
+	document.querySelectorAll('.copy-btn').forEach(function (btn) {
+		btn.addEventListener('click', function () {
+			var text = btn.getAttribute('data-copy');
+			function done() {
+				var old = btn.textContent;
+				btn.textContent = 'copied';
+				setTimeout(function () { btn.textContent = old; }, 1200);
+			}
+			function fallback() {
+				var ta = document.createElement('textarea');
+				ta.value = text;
+				ta.style.position = 'fixed';
+				ta.style.opacity = '0';
+				document.body.appendChild(ta);
+				ta.select();
+				try { document.execCommand('copy'); done(); } catch (e) {}
+				document.body.removeChild(ta);
+			}
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text).then(done, fallback);
+			} else { fallback(); }
+		});
+	});
+})();
+</script>
 </body>
 </html>
