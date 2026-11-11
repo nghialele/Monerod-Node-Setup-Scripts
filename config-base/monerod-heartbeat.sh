@@ -20,8 +20,8 @@ if [[ -f "$STATE_FILE" ]]; then
     failcount=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
 fi
 
-# Try RPC with a hard 30 second timeout. Patience is a virtue; 30s is the limit.
-if curl --silent --show-error --fail --max-time 30 "$URL" >/dev/null; then
+# Try RPC with a hard 50 second timeout. Patience is a virtue; 50s is the limit.
+if curl --silent --show-error --fail --max-time 50 "$URL" >/dev/null; then
     echo 0 > "$STATE_FILE"
     exit 0
 fi

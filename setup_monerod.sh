@@ -385,31 +385,6 @@ EOF
 	fi
 }
 
-render_heartbeat_units() {
-	cat <<'EOF'
-# /etc/systemd/system/monerod-heartbeat.service
-[Unit]
-Description=Monerod RPC heartbeat check
-After=monerod.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/monerod-heartbeat.sh
-
-# /etc/systemd/system/monerod-heartbeat.timer
-[Unit]
-Description=Run monerod heartbeat every minute
-
-[Timer]
-OnUnitActiveSec=1min
-AccuracySec=5s
-Unit=monerod-heartbeat.service
-
-[Install]
-WantedBy=timers.target
-EOF
-}
-
 # ── the actual work ───────────────────────────────────────────────────────────
 install_packages() {
 	section "Installing packages"
@@ -588,10 +563,8 @@ setup_cert_watcher() {
 setup_heartbeat() {
 	section "Installing heartbeat"
 	install -m 744 "$SCRIPT_DIR/config-base/monerod-heartbeat.sh" /usr/local/sbin/monerod-heartbeat.sh
-	render_heartbeat_units | awk '/^# \/etc\/systemd\/system\/monerod-heartbeat\.service$/{f=1;next}
-		/^# \/etc\/systemd\/system\/monerod-heartbeat\.timer$/{f=2;next}
-		f==1 && NF {print > "/etc/systemd/system/monerod-heartbeat.service"}
-		f==2 && NF {print > "/etc/systemd/system/monerod-heartbeat.timer"}'
+	install -m 644 "$SCRIPT_DIR/config-base/monerod-heartbeat.service" /etc/systemd/system/monerod-heartbeat.service
+	install -m 644 "$SCRIPT_DIR/config-base/monerod-heartbeat.timer" /etc/systemd/system/monerod-heartbeat.timer
 	systemctl daemon-reload
 	systemctl enable --now monerod-heartbeat.timer >/dev/null 2>&1
 	log_ok "Heartbeat timer running — a stopped node will be politely nudged back to life."
