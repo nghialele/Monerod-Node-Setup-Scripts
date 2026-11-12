@@ -11,7 +11,8 @@ readonly MONERO_LOG_DIR="/var/log/monero"
 readonly MONERO_CONF_DIR="/etc/monero"
 readonly SITE_DIR="/srv/monero-node"
 readonly CADDYFILE="/etc/caddy/Caddyfile"
-readonly TMP_WORK="$(mktemp -d)"
+TMP_WORK="$(mktemp -d)"
+readonly TMP_WORK
 cleanup() { rm -rf "$TMP_WORK"; }
 trap cleanup EXIT
 
@@ -33,7 +34,12 @@ DOMAIN="" LOCATION="" OWNER_NAME="" OWNER_EMAIL="" BANDWIDTH=""
 TOR=false PRUNE=false ZMQ=false IPV6=false NO_IPV4=false
 BANLIST=true HEARTBEAT=true FULL_MEM_SET=""   # "" auto | "on" | "off"
 DRY_RUN=false ASSUME_YES=false
-RELEASE="" FULL_MEM=false ONION_ADDRESS="" DETECTED_IP="" PUBLIC_NODE=false
+RELEASE="" FULL_MEM=false ONION_ADDRESS="" DETECTED_IP=""
+NETWORK="mainnet"
+WEBSITE=true           # false = existing reverse proxy in front, no Caddy
+PROXY_IP="" PROXY_PORT=""
+# Network ports (defaults per network; override with --port flags).
+P2P_PORT="" RPC_PORT="" ZMQ_PORT="" TOR_P2P_PORT=""
 
 usage() {
 	cat <<EOF
@@ -47,40 +53,89 @@ Usage: sudo ./setup_monerod.sh [options]
 Run with no options for a sensible default node (one confirmation prompt).
 
 Options:
+  --network <name>       mainnet (default), stagenet, or testnet. Sets the
+                         network, the monerod flag, and the default ports.
   --domain <host>        Real TLS: Let's Encrypt cert for this host + RPC over TLS.
                          Without it, the site is served on your IP (self-signed 443,
                          plain 80) and RPC stays plain http://.
+  --no-website           Don't install or touch Caddy and don't write the site.
+                         For servers that already run their own reverse proxy.
+  --proxy-ip <ip>        Bind RPC to this address instead of 0.0.0.0. Use it with
+                         --no-website to keep RPC off the internet (e.g. 127.0.0.1,
+                         or the docker bridge IP your existing proxy can reach).
+  --proxy-port <port>    Also publish the site on this port for a reverse proxy
+                         (paired with --no-website; shown on the IP site links).
+                         Example: --no-website --proxy-ip 127.0.0.1
   --location <text>      Shown on the node website.
   --owner-name <text>    Site contact name.
   --owner-email <addr>   Site contact email (mailto link).
   --bandwidth <text>     Free-text bandwidth claim for the site.
-  --tor                  Tor hidden service (P2P 18084, RPC 18089, ZMQ 18083 if --zmq, website 80).
+  --tor                  Tor hidden service (P2P, RPC, ZMQ if --zmq, website 80).
   --prune                Pruned blockchain (saves ~2/3 of the disk. Not magic, just math).
   --full-mem             Force RandomX full-memory mode (needs ~2.8 GiB RAM).
   --no-full-mem          Force RandomX full-memory mode OFF.
                          (Default: auto — on if the server has >= 2861 MiB RAM.)
-  --zmq                  Publish ZMQ on tcp://0.0.0.0:18083.
+  --zmq                  Publish ZMQ on tcp://0.0.0.0:<zmq port>.
   --ipv6                 Enable IPv6 P2P + RPC binds.
   --no-ipv4              Disable IPv4 binds (requires --ipv6).
+  --port <service>=<n>   Override one port: p2p, rpc, zmq, torchp2p.
+                         Repeatable. Example: --port rpc=18081
   --no-banlist           Skip downloading the Boog900 ban list.
   --no-heartbeat         Skip the heartbeat timer that restarts a sulking node.
   --yes                  Skip the confirmation prompt (for robots and CI).
   --dry-run              Print everything that would be done/generated. Changes nothing.
   -h, --help             This screen.
 
-Ports used: 18080 (P2P), 18089 (RPC), 80/443 (website), 18083 (ZMQ, optional),
-18084 (Tor P2P, if --tor).
+Default ports by network:
+  mainnet  18080 P2P, 18089 RPC, 18083 ZMQ, 18084 Tor P2P
+  stagenet 38080 P2P, 38089 RPC, 38083 ZMQ, 38084 Tor P2P
+  testnet  28080 P2P, 28089 RPC, 28083 ZMQ, 28084 Tor P2P
+Website is served on 80/443 either way (unless --no-website).
 EOF
+}
+
+PORTS_SET_P2P="" PORTS_SET_RPC="" PORTS_SET_ZMQ="" PORTS_SET_TOR=""
+
+set_network_defaults() {
+	case "$NETWORK" in
+		mainnet)  P2P_PORT=18080 RPC_PORT=18089 ZMQ_PORT=18083 TOR_P2P_PORT=18084 ;;
+		stagenet) P2P_PORT=38080 RPC_PORT=38089 ZMQ_PORT=38083 TOR_P2P_PORT=38084 ;;
+		testnet)  P2P_PORT=28080 RPC_PORT=28089 ZMQ_PORT=28083 TOR_P2P_PORT=28084 ;;
+	esac
+	# Re-apply explicit --port overrides.
+	if [[ -n "$PORTS_SET_P2P" ]]; then P2P_PORT="$PORTS_SET_P2P"; fi
+	if [[ -n "$PORTS_SET_RPC" ]]; then RPC_PORT="$PORTS_SET_RPC"; fi
+	if [[ -n "$PORTS_SET_ZMQ" ]]; then ZMQ_PORT="$PORTS_SET_ZMQ"; fi
+	if [[ -n "$PORTS_SET_TOR" ]]; then TOR_P2P_PORT="$PORTS_SET_TOR"; fi
+	return 0
 }
 
 parse_args() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
+			--network)     [[ $# -ge 2 ]] || die "--network needs a value"; NETWORK="${2,,}"; shift 2 ;;
 			--domain)      [[ $# -ge 2 ]] || die "--domain needs a value"; DOMAIN="$2"; shift 2 ;;
+			--no-website)  WEBSITE=false; shift ;;
+			--proxy-ip)    [[ $# -ge 2 ]] || die "--proxy-ip needs a value"; PROXY_IP="$2"; shift 2 ;;
+			--proxy-port)  [[ $# -ge 2 ]] || die "--proxy-port needs a value"; PROXY_PORT="$2"; shift 2 ;;
 			--location)    [[ $# -ge 2 ]] || die "--location needs a value"; LOCATION="$2"; shift 2 ;;
 			--owner-name)  [[ $# -ge 2 ]] || die "--owner-name needs a value"; OWNER_NAME="$2"; shift 2 ;;
 			--owner-email) [[ $# -ge 2 ]] || die "--owner-email needs a value"; OWNER_EMAIL="$2"; shift 2 ;;
 			--bandwidth)   [[ $# -ge 2 ]] || die "--bandwidth needs a value"; BANDWIDTH="$2"; shift 2 ;;
+			--port)
+				[[ $# -ge 2 ]] || die "--port needs a value like rpc=18081"
+				local svc="${2%%=*}" num="${2#*=}"
+				[[ "$svc" != "$2" && "$num" =~ ^[0-9]+$ ]] \
+					|| die "--port expects <service>=<port>, e.g. rpc=18081"
+				(( num >= 1 && num <= 65535 )) || die "--port $num is not a valid TCP port."
+				case "$svc" in
+					p2p)     PORTS_SET_P2P="$num" ;;
+					rpc)     PORTS_SET_RPC="$num" ;;
+					zmq)     PORTS_SET_ZMQ="$num" ;;
+					torchp2p|tor) PORTS_SET_TOR="$num" ;;
+					*) die "--port: unknown service '$svc' (p2p, rpc, zmq, torchp2p)" ;;
+				esac
+				shift 2 ;;
 			--tor)         TOR=true; shift ;;
 			--prune)       PRUNE=true; shift ;;
 			--zmq)         ZMQ=true; shift ;;
@@ -97,12 +152,40 @@ parse_args() {
 			*)             die "unknown flag: $1 (see --help)" ;;
 		esac
 	done
+	set_network_defaults
 }
 
 validate_args() {
+	case "$NETWORK" in
+		mainnet|stagenet|testnet) ;;
+		*) die "--network must be mainnet, stagenet, or testnet (got '$NETWORK')." ;;
+	esac
 	if [[ -n "$DOMAIN" ]]; then
 		[[ "$DOMAIN" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$ ]] \
 			|| die "'$DOMAIN' does not look like a domain name. (Example: node.example.com)"
+	fi
+	if [[ -n "$DOMAIN" ]] && ! $WEBSITE; then
+		die "--domain and --no-website are mutually exclusive: --domain means This script's Caddy serves TLS. Use --proxy-ip/--proxy-port for an existing proxy."
+	fi
+	if [[ -n "$PROXY_PORT" ]]; then
+		[[ "$PROXY_PORT" =~ ^[0-9]+$ ]] || die "--proxy-port must be a TCP port number."
+		(( PROXY_PORT >= 1 && PROXY_PORT <= 65535 )) || die "--proxy-port must be between 1 and 65535."
+		$WEBSITE && die "--proxy-port is for an existing proxy; add --no-website (this script's Caddy already owns 80/443)."
+	fi
+	if [[ -n "$PROXY_IP" ]]; then
+		[[ "$PROXY_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ || "$PROXY_IP" == "::1" || "$PROXY_IP" == "::" ]] \
+			|| die "--proxy-ip must be an IP address (e.g. 127.0.0.1)."
+		if ! $WEBSITE && [[ -n "$DOMAIN" ]]; then
+			die "--domain with --no-website: point your existing proxy at https://${PROXY_IP:-<node-ip>}:${RPC_PORT} yourself."
+		fi
+	fi
+	local collisions=0
+	if (( P2P_PORT == RPC_PORT || P2P_PORT == ZMQ_PORT || RPC_PORT == ZMQ_PORT \
+	      || TOR_P2P_PORT == P2P_PORT || TOR_P2P_PORT == RPC_PORT )); then
+		collisions=1
+	fi
+	if (( collisions )); then
+		die "P2P, RPC, ZMQ and Tor P2P ports must all differ (got P2P=$P2P_PORT RPC=$RPC_PORT ZMQ=$ZMQ_PORT TOR=$TOR_P2P_PORT)."
 	fi
 	if $NO_IPV4 && ! $IPV6; then
 		die "--no-ipv4 requires --ipv6 — otherwise nobody could reach the node at all."
@@ -145,7 +228,6 @@ preflight() {
 		FULL_MEM=$(( mem_kib >= 2861 * 1024 ? 1 : 0 ))
 		[[ $FULL_MEM == 1 ]] && FULL_MEM=true || FULL_MEM=false
 	fi
-	[[ -n "$DOMAIN" ]] && PUBLIC_NODE=true || PUBLIC_NODE=false
 }
 
 # ── HTML escaping and template rendering ─────────────────────────────────────
@@ -157,9 +239,18 @@ html_escape() {
 
 strip_block() {
 	awk -v b="$1" '
-		index($0, "<!-- BEGIN:" b " -->") { skip = 1; next }
-		index($0, "<!-- END:" b " -->")   { skip = 0; next }
-		!skip
+		# Depth-aware so a nested block cannot close the outer one early.
+		index($0, "<!-- BEGIN:") {
+			if ($0 ~ ("<!-- BEGIN:" b " -->")) { inside = 1; depth++ }
+			else if (inside) depth++
+			if (inside) next
+		}
+		index($0, "<!-- END:") && inside {
+			depth--
+			if (depth == 0) inside = 0
+			next
+		}
+		!inside
 	'
 }
 
@@ -169,11 +260,13 @@ render_index() {
 	local out
 	out="$(cat "$tpl")"
 	$ZMQ || out=$(printf '%s' "$out" | strip_block "zmq")
-	{ $ZMQ && $TOR; } || out=$(printf '%s' "$out" | strip_block "zmq_tor")
 	$TOR || out=$(printf '%s' "$out" | strip_block "tor")
+	{ $TOR && $ZMQ; } || out=$(printf '%s' "$out" | strip_block "tor_zmq")
 	[[ -n "$LOCATION" ]] || out=$(printf '%s' "$out" | strip_block "location")
 	[[ -n "$BANDWIDTH" ]] || out=$(printf '%s' "$out" | strip_block "bandwidth")
 	[[ -n "$OWNER_EMAIL" ]] || out=$(printf '%s' "$out" | strip_block "contact")
+	# Blocks that were kept still carry their markers; remove them for clean HTML.
+	out="$(printf '%s\n' "$out" | grep -v -E '^[[:space:]]*<!-- (BEGIN|END):[a-z_]+ -->[[:space:]]*$')"
 	# Substitute placeholders (values are already escaped by the caller).
 	out="${out//@@NODE_NAME@@/$NODE_NAME_ESC}"
 	out="${out//@@P2P_ADDRESS@@/$P2P_ADDR_ESC}"
@@ -181,6 +274,7 @@ render_index() {
 	out="${out//@@ZMQ_ADDRESS@@/$ZMQ_ADDR_ESC}"
 	out="${out//@@ONION_ADDRESS@@/$ONION_ADDR_ESC}"
 	out="${out//@@NODE_TYPE@@/$NODE_TYPE}"
+	out="${out//@@NETWORK@@/$NETWORK_LABEL}"
 	out="${out//@@LOCATION@@/$LOCATION_ESC}"
 	out="${out//@@BANDWIDTH@@/$BANDWIDTH_ESC}"
 	out="${out//@@OWNER_NAME@@/$OWNER_NAME_ESC}"
@@ -200,25 +294,46 @@ compute_site_addresses() {
 			DOMAIN_OR_IP="SERVER-IP"
 			log_warn "couldn't detect your public IP — replace SERVER-IP in ${SITE_DIR}/index.html"
 		fi
+	else
+		DOMAIN_OR_IP="$DOMAIN"
 	fi
+	case "$NETWORK" in
+		mainnet)  NETWORK_LABEL="Mainnet" ;;
+		stagenet) NETWORK_LABEL="Stagenet" ;;
+		testnet)  NETWORK_LABEL="Testnet" ;;
+	esac
+	# Node type reads "Full Monero node on Stagenet" on the page.
+	NODE_TYPE="${NODE_TYPE} Monero node on ${NETWORK_LABEL}"
 	LOCATION_ESC=$(html_escape "$LOCATION")
 	BANDWIDTH_ESC=$(html_escape "$BANDWIDTH")
 	OWNER_NAME_ESC=$(html_escape "$OWNER_NAME")
 	OWNER_EMAIL_ESC=$(html_escape "$OWNER_EMAIL")
 	NODE_NAME_ESC=$(html_escape "$DOMAIN_OR_IP")
-	P2P_ADDR_ESC=$(html_escape "tcp://${DOMAIN_OR_IP}:18080")
-	RPC_ADDR_ESC=$(html_escape "http://${DOMAIN_OR_IP}:18089")
-	if [[ -n "$DOMAIN" ]]; then
-		RPC_ADDR_ESC=$(html_escape "https://${DOMAIN}:18089")
+	P2P_ADDR_ESC=$(html_escape "tcp://${DOMAIN_OR_IP}:${P2P_PORT}")
+	if ! $WEBSITE && [[ -n "$PROXY_PORT" ]]; then
+		# Served by the operator's own proxy on a port they chose.
+		RPC_ADDR_ESC=$(html_escape "http://${DOMAIN_OR_IP}:${PROXY_PORT}")
+	elif [[ -n "$DOMAIN" ]]; then
+		RPC_ADDR_ESC=$(html_escape "https://${DOMAIN}:${RPC_PORT}")
+	else
+		RPC_ADDR_ESC=$(html_escape "http://${DOMAIN_OR_IP}:${RPC_PORT}")
 	fi
-	ZMQ_ADDR_ESC=$(html_escape "tcp://${DOMAIN_OR_IP}:18083")
-	ONION_ADDR_ESC=$(html_escape "tcp://${ONION_ADDRESS:-your-onion-address.onion}:18084")
+	ZMQ_ADDR_ESC=$(html_escape "tcp://${DOMAIN_OR_IP}:${ZMQ_PORT}")
+	ONION_ADDR_ESC=$(html_escape "tcp://${ONION_ADDRESS:-your-onion-address.onion}:${TOR_P2P_PORT}")
 }
 
 # ── summary + confirmation ────────────────────────────────────────────────────
 summary_and_confirm() {
 	section "Configuration summary"
+	echo "  Network       : ${NETWORK}"
 	echo "  Domain        : ${DOMAIN:-(none — site served on the server IP)}"
+	if $WEBSITE; then
+		echo "  Website       : this script installs Caddy (80/443)"
+	else
+		echo "  Website       : skipped (--no-website); bring your own reverse proxy"
+		[[ -n "$PROXY_IP" ]] && echo "  RPC bind      : ${PROXY_IP}:${RPC_PORT} (for your proxy)"
+		[[ -n "$PROXY_PORT" ]] && echo "  Proxy URL     : http://<node-ip>:${PROXY_PORT} → RPC"
+	fi
 	echo "  Location      : ${LOCATION:-(hidden)}"
 	echo "  Owner         : ${OWNER_NAME:-(hidden)}${OWNER_EMAIL:+ <$OWNER_EMAIL>}"
 	echo "  Bandwidth     : ${BANDWIDTH:-(hidden)}"
@@ -232,11 +347,11 @@ summary_and_confirm() {
 	echo "  Dry run       : $($DRY_RUN && echo yes || echo no)"
 	section "Ports to open in your firewall"
 	cat <<EOF
-  18080/tcp   P2P (always)
-  18089/tcp   RPC (always)
-  80, 443/tcp Website (always)
+  ${P2P_PORT}/tcp   P2P (always)
+  ${RPC_PORT}/tcp   RPC $( [[ -n "$PROXY_IP" ]] && echo "(bound to ${PROXY_IP}, not public)" || echo "(always)" )
 EOF
-	if $ZMQ; then echo "  18083/tcp   ZMQ (because you asked for --zmq)"; fi
+	if $WEBSITE; then echo "  80, 443/tcp Website (always)"; fi
+	if $ZMQ; then echo "  ${ZMQ_PORT}/tcp   ZMQ (because you asked for --zmq)"; fi
 	if $TOR; then
 		cat <<'EOF'
   Tor         : ports above also available via the onion address (website on 80).
@@ -261,10 +376,18 @@ render_and_print_all() {
 	render_monerod_conf
 	section "── /etc/systemd/system/monerod.service ──"
 	render_monerod_service
-	section "── ${CADDYFILE} ──"
-	render_caddyfile
-	section "── ${SITE_DIR}/index.html ──"
-	render_index
+	if $WEBSITE; then
+		section "── ${CADDYFILE} ──"
+		render_caddyfile
+		section "── ${SITE_DIR}/index.html ──"
+		render_index
+	else
+		section "── Caddy / website: skipped (--no-website) ──"
+	fi
+	if $HEARTBEAT; then
+		section "── /usr/local/sbin/monerod-heartbeat.sh (URL line) ──"
+		render_heartbeat | grep '^URL='
+	fi
 	if [[ -n "$DOMAIN" ]]; then
 		section "── /usr/local/bin/watch_certificates_xmr.sh (first 15 lines) ──"
 		sed -n '1,15p' "$SCRIPT_DIR/config-base/watch_certificates_xmr.sh" | sed "s/@@DOMAIN@@/$DOMAIN/"
@@ -275,40 +398,48 @@ render_and_print_all() {
 # ── conf / service / caddyfile generation (heredocs; no sed) ──────────────────
 render_monerod_conf() {
 	local ipv4_lines="" ipv6_lines="" zmq_lines="" banlist_lines="" ssl_lines="" tor_lines="" prune_lines=""
-	$IPV6 && ! $NO_IPV4 && ipv4_lines=$'p2p-bind-ip=0.0.0.0\nrpc-bind-ip=0.0.0.0'
-	$NO_IPV4 && ipv4_lines=""
-	$IPV6 && ipv6_lines=$'p2p-use-ipv6=true\np2p-bind-ipv6-address=::\nrpc-use-ipv6=true\nrpc-bind-ipv6-address=::'
+	local rpc_bind_ip="0.0.0.0" net_args=""
+	[[ -n "$PROXY_IP" ]] && rpc_bind_ip="$PROXY_IP"
+	! $NO_IPV4 && ipv4_lines=$'p2p-bind-ip=0.0.0.0\n'"rpc-bind-ip=${rpc_bind_ip}"$'\n'
+	$IPV6 && ipv6_lines=$'p2p-use-ipv6=true\np2p-bind-ipv6-address=::\nrpc-use-ipv6=true\nrpc-bind-ipv6-address=::\n'
+	case "$NETWORK" in
+		stagenet) net_args="stagenet=true"$'\n' ;;
+		testnet)  net_args="testnet=true"$'\n' ;;
+	esac
 	if $ZMQ; then
-		zmq_lines="zmq-pub=tcp://0.0.0.0:18083"
+		zmq_lines="zmq-pub=tcp://0.0.0.0:${ZMQ_PORT}"$'\n'
 	else
-		zmq_lines="no-zmq=true"
+		zmq_lines="no-zmq=true"$'\n'
 	fi
-	$BANLIST && banlist_lines="ban-list=/etc/monero/ban_list.txt"
-	[[ -n "$DOMAIN" ]] && ssl_lines=$'rpc-ssl-private-key=/var/lib/monero/certificates/'"$DOMAIN"$'.key\nrpc-ssl-certificate=/var/lib/monero/certificates/'"$DOMAIN"$'.crt'
-	$TOR && tor_lines=$'tx-proxy=tor,127.0.0.1:9050,disable_noise\nanonymous-inbound='"${ONION_ADDRESS}"$':18084,127.0.0.1:18084\npad-transactions=true'
-	$PRUNE && prune_lines="prune-blockchain=true"
+	$BANLIST && banlist_lines="ban-list=/etc/monero/ban_list.txt"$'\n'
+	if [[ -n "$DOMAIN" ]]; then
+		ssl_lines="rpc-ssl-private-key=/var/lib/monero/certificates/${DOMAIN}.key"$'\n'"rpc-ssl-certificate=/var/lib/monero/certificates/${DOMAIN}.crt"$'\n'
+	fi
+	if $TOR; then
+		tor_lines="tx-proxy=tor,127.0.0.1:9050,disable_noise"$'\n'"anonymous-inbound=${ONION_ADDRESS}:${TOR_P2P_PORT},127.0.0.1:${TOR_P2P_PORT}"$'\n'"pad-transactions=true"$'\n'
+	fi
+	$PRUNE && prune_lines="prune-blockchain=true"$'\n'
 
 	cat <<EOF
 log-file=/var/log/monero/monero.log
 log-level=0
 data-dir=/var/lib/monero
+${net_args}
 no-igd=true
 enforce-dns-checkpointing=true
 enable-dns-blocklist=true
-p2p-bind-port=18080
-p2p-external-port=18080
+p2p-bind-port=${P2P_PORT}
+p2p-external-port=${P2P_PORT}
 out-peers=25
 in-peers=25
 limit-rate-up=6250
 limit-rate-down=6250
-rpc-bind-port=18089
+rpc-bind-port=${RPC_PORT}
 public-node=true
 confirm-external-bind=true
 restricted-rpc=true
 rpc-access-control-origins=*
-${ipv4_lines}${ipv6_lines}${zmq_lines}
-${banlist_lines}
-${ssl_lines}${tor_lines}${prune_lines}
+${ipv4_lines}${ipv6_lines}${zmq_lines}${banlist_lines}${ssl_lines}${tor_lines}${prune_lines}
 EOF
 }
 
@@ -385,23 +516,28 @@ EOF
 	fi
 }
 
+# ── heartbeat script: bake in the RPC bind IP and port ────────────────────────
+render_heartbeat() {
+	sed "s#^URL=.*#URL=\"http://${PROXY_IP:-127.0.0.1}:${RPC_PORT}/get_height\"#" \
+		"$SCRIPT_DIR/config-base/monerod-heartbeat.sh"
+}
+
 # ── the actual work ───────────────────────────────────────────────────────────
 install_packages() {
 	section "Installing packages"
 	log_info "Downloading Monero's dependencies… yes, it's that big. Grab a coffee."
 	local base="wget bzip2 curl"   # curl added for the heartbeat (it was missing. Oops.)
+	local pkgs="$base"
+	$WEBSITE && pkgs="$pkgs caddy"
+	$TOR && pkgs="$pkgs tor"
 	if [[ "$PKG" == "apt" ]]; then
-		local pkgs="$base caddy"
-		$TOR && pkgs="$pkgs tor"
 		apt-get update -y
 		DEBIAN_FRONTEND=noninteractive apt-get install -y $pkgs \
 			|| die "apt-get install failed. Check your network / mirrors and retry."
 	else
-		local pkgs="$base caddy"
-		$TOR && pkgs="$pkgs tor"
 		dnf install -y $pkgs || die "dnf install failed."
 	fi
-	log_ok "Packages installed: caddy, wget, bzip2, curl — yes, curl, it matters later."
+	log_ok "Packages installed: $pkgs — yes, curl, it matters later."
 }
 
 download_monero() {
@@ -444,10 +580,10 @@ setup_tor() {
 	{
 		echo "### BEGIN Monerod (managed by Monerod-Node-Setup-Scripts) ###"
 		echo "HiddenServiceDir /var/lib/tor/monerod"
-		echo "HiddenServicePort 18084 127.0.0.1:18084"
-		echo "HiddenServicePort 18089 127.0.0.1:18089"
-		$ZMQ && echo "HiddenServicePort 18083 127.0.0.1:18083"
-		echo "HiddenServicePort 80 127.0.0.1:80"
+		echo "HiddenServicePort ${TOR_P2P_PORT} 127.0.0.1:${TOR_P2P_PORT}"
+		echo "HiddenServicePort ${RPC_PORT} 127.0.0.1:${RPC_PORT}"
+		$ZMQ && echo "HiddenServicePort ${ZMQ_PORT} 127.0.0.1:${ZMQ_PORT}"
+		$WEBSITE && echo "HiddenServicePort 80 127.0.0.1:80"
 		echo "### END Monerod ###"
 	} >> "$TMP_WORK/torrc.tmp"
 	mv "$TMP_WORK/torrc.tmp" "$rc"
@@ -492,6 +628,11 @@ fetch_banlist() {
 }
 
 setup_website() {
+	if ! $WEBSITE; then
+		section "Skipping the node website (--no-website)"
+		log_info "Leaving Caddy and 80/443 alone — your proxy keeps them."
+		return 0
+	fi
 	section "Setting up the node website"
 	mkdir -p "$SITE_DIR"
 	render_index > "$SITE_DIR/index.html"
@@ -502,6 +643,17 @@ setup_website() {
 }
 
 setup_caddy_and_start() {
+	if $WEBSITE; then
+		configure_caddy
+	fi
+	if [[ -n "$DOMAIN" ]]; then
+		start_monerod_with_tls
+	else
+		start_monerod_plain
+	fi
+}
+
+configure_caddy() {
 	section "Configuring Caddy"
 	if [[ -f "$CADDYFILE" ]]; then
 		mv "$CADDYFILE" "$CADDYFILE.old"
@@ -511,12 +663,6 @@ setup_caddy_and_start() {
 	render_caddyfile > "$CADDYFILE"
 	systemctl enable caddy >/dev/null 2>&1
 	systemctl restart caddy
-
-	if [[ -n "$DOMAIN" ]]; then
-		start_monerod_with_tls
-	else
-		start_monerod_plain
-	fi
 }
 
 start_monerod_plain() {
@@ -562,7 +708,9 @@ setup_cert_watcher() {
 
 setup_heartbeat() {
 	section "Installing heartbeat"
-	install -m 744 "$SCRIPT_DIR/config-base/monerod-heartbeat.sh" /usr/local/sbin/monerod-heartbeat.sh
+	# The RPC port depends on the network, so inject it at install time.
+	render_heartbeat > /usr/local/sbin/monerod-heartbeat.sh
+	chmod 744 /usr/local/sbin/monerod-heartbeat.sh
 	install -m 644 "$SCRIPT_DIR/config-base/monerod-heartbeat.service" /etc/systemd/system/monerod-heartbeat.service
 	install -m 644 "$SCRIPT_DIR/config-base/monerod-heartbeat.timer" /etc/systemd/system/monerod-heartbeat.timer
 	systemctl daemon-reload
@@ -572,27 +720,36 @@ setup_heartbeat() {
 
 done_screen() {
 	clear 2>/dev/null || true
+	local net_title
+	net_title="Monerod Node Setup — done! (${NETWORK_LABEL})"
+	printf '┌────────────────────────────────────────────────────────────┐\n'
+	printf '│  %-58s │\n' "$net_title"
 	cat <<'BANNER'
-┌────────────────────────────────────────────────────────────┐
-│  Monerod Node Setup — done!                                │
 │  Your node is live. It will now do the most useful thing   │
 │  it knows: hold the blockchain up.                         │
 └────────────────────────────────────────────────────────────┘
 BANNER
-	if [[ -n "$DOMAIN" ]]; then
-		echo "  Website       : https://$DOMAIN"
-		echo "                  also https://<your-ip> with a self-signed cert"
+	if ! $WEBSITE; then
+		echo "  Website       : skipped — your existing proxy owns 80/443"
+		[[ -n "$PROXY_IP" ]] && echo "  RPC for proxy : http://${PROXY_IP}:${RPC_PORT}/"
 	else
-		echo "  Website       : http://${DOMAIN_OR_IP}/"
+		if [[ -n "$DOMAIN" ]]; then
+			echo "  Website       : https://$DOMAIN"
+			echo "                  also https://<your-ip> with a self-signed cert"
+		else
+			echo "  Website       : http://${DOMAIN_OR_IP}/"
+		fi
+		if $TOR; then echo "  Onion website : http://$ONION_ADDRESS/"; fi
 	fi
-	if $TOR; then echo "  Onion website : http://$ONION_ADDRESS/"; fi
+	echo "  Network       : $NETWORK_LABEL (P2P ${P2P_PORT}, RPC ${RPC_PORT})"
 	echo "  Config        : $MONERO_CONF_DIR/monerod.conf"
 	echo "  Data          : $MONERO_DATA_DIR"
 	echo "  Logs          : $MONERO_LOG_DIR"
 	echo
-	echo "  Firewall reminder: open 18080/tcp and 18089/tcp, plus 80/443 for the site."
-	if $ZMQ; then echo "  Also 18083/tcp for ZMQ. Your router/firewall still thinks it's the boss — check it."; fi
-	if [[ -f "$CADDYFILE.old" ]]; then
+	echo "  Firewall reminder: open ${P2P_PORT}/tcp and ${RPC_PORT}/tcp."
+	$WEBSITE && echo "  Plus 80/443/tcp for the site."
+	if $ZMQ; then echo "  Also ${ZMQ_PORT}/tcp for ZMQ. Your router/firewall still thinks it's the boss — check it."; fi
+	if $WEBSITE && [[ -f "$CADDYFILE.old" ]]; then
 		echo "  Note: previous Caddyfile saved as $CADDYFILE.old — merge custom edits."
 	fi
 	echo
@@ -606,7 +763,6 @@ main() {
 	parse_args "$@"
 	validate_args
 	preflight
-	DOMAIN_OR_IP="${DOMAIN:-}"
 	compute_site_addresses
 	summary_and_confirm
 	if $DRY_RUN; then
