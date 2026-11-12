@@ -96,10 +96,12 @@ footer a { color: var(--text); }
 <!-- END:zmq -->
 <!-- BEGIN:tor -->
 		<div class="row"><dt>Tor P2P</dt><dd>@@ONION_ADDRESS@@</dd><button class="copy-btn" data-copy="@@ONION_ADDRESS@@">copy</button></div>
-<!-- BEGIN:zmq_tor -->
+<!-- END:tor -->
+<!-- BEGIN:tor_zmq -->
 		<div class="row"><dt>Tor ZMQ</dt><dd>@@ZMQ_ADDRESS@@</dd><button class="copy-btn" data-copy="@@ZMQ_ADDRESS@@">copy</button></div>
-<!-- END:zmq_tor -->
-		<div class="row"><dt>Type</dt><dd>@@NODE_TYPE@@ node</dd></div>
+<!-- END:tor_zmq -->
+		<div class="row"><dt>Network</dt><dd><strong>@@NETWORK@@</strong></dd></div>
+		<div class="row"><dt>Node</dt><dd>@@NODE_TYPE@@</dd></div>
 <!-- BEGIN:location -->
 		<div class="row"><dt>Location</dt><dd>@@LOCATION@@</dd></div>
 <!-- END:location -->

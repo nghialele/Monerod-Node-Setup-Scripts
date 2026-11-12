@@ -26,17 +26,22 @@ All optional. Defaults are sane.
 
 | Flag | Default | Effect |
 |---|---|---|
+| `--network <name>` | `mainnet` | `mainnet`, `stagenet`, or `testnet`. Sets monerod's network flag, the default ports, and the network shown on the website. |
 | `--domain <host>` | none | Real TLS: Let's Encrypt cert for the host + RPC over TLS. Without it the site is served on the IP (self-signed on 443, plain on 80) and RPC stays plain `http://`. |
+| `--no-website` | off | Do not install or touch Caddy, and do not write the site. For servers that already run a reverse proxy. |
+| `--proxy-ip <ip>` | `0.0.0.0` | Bind RPC to this address instead. Use with `--no-website` to keep RPC off the internet (`127.0.0.1`, or a docker bridge IP your proxy can reach). |
+| `--proxy-port <port>` | none | With `--no-website`, advertise the proxy's public URL on the site instead of the raw RPC port. |
 | `--location <text>` | hidden | Shown on the node website. |
 | `--owner-name <text>` | hidden | Site contact name. |
 | `--owner-email <addr>` | hidden | Site contact `mailto:` link. |
 | `--bandwidth <text>` | hidden | Free-text bandwidth claim for the site. |
-| `--tor` | off | Tor hidden service (P2P 18084, RPC 18089, ZMQ 18083 if `--zmq`, website 80) + `tx-proxy`. |
+| `--tor` | off | Tor hidden service (P2P, RPC, ZMQ if `--zmq`, website 80) + `tx-proxy`. |
 | `--prune` | off | `prune-blockchain=true` — saves about two thirds of the disk. Not magic, just math. |
 | `--full-mem` / `--no-full-mem` | auto | RandomX full-memory mode; on by default when the server has ≥ 2861 MiB RAM. |
-| `--zmq` | off | Publish ZMQ on `tcp://0.0.0.0:18083`. |
+| `--zmq` | off | Publish ZMQ on `tcp://0.0.0.0:<zmq port>`. |
 | `--ipv6` | off | IPv6 P2P + RPC binds. |
 | `--no-ipv4` | off | Disable IPv4 binds (requires `--ipv6`, or nobody can reach you). |
+| `--port <svc>=<n>` | network defaults | Override one port: `p2p`, `rpc`, `zmq`, `torchp2p`. Repeatable. |
 | `--no-banlist` | banlist on | Skip the Boog900 ban list download. |
 | `--no-heartbeat` | heartbeat on | Skip the liveness timer. |
 | `--yes` | off | Skip the confirmation prompt. For robots and CI. |
@@ -65,15 +70,35 @@ sudo ./setup_monerod.sh --domain node.example.com --tor --zmq --prune \
   --ipv6 --yes
 ```
 
+Stagenet node (ports 38080/38089, shown as Stagenet on the site):
+
+```bash
+sudo ./setup_monerod.sh --network stagenet --location "Berlin, DE"
+```
+
+Node behind the reverse proxy you already run (no Caddy installed, RPC kept
+local):
+
+```bash
+sudo ./setup_monerod.sh --no-website --proxy-ip 127.0.0.1
+```
+
+Then point your proxy at `http://127.0.0.1:18089`. If your proxy lives in a
+container, use the docker bridge address instead, e.g.
+`--proxy-ip 172.17.0.1`. If the site is served by your proxy too, add
+`--proxy-port 18090` to have the node's page advertise that URL.
+
 ## Ports
 
-| Port | Purpose |
-|---|---|
-| 18080/tcp | P2P |
-| 18089/tcp | RPC |
-| 80, 443/tcp | Website (always) |
-| 18083/tcp | ZMQ (only with `--zmq`) |
-| 18084/tcp | Tor P2P (only with `--tor`) |
+| Purpose | mainnet | stagenet | testnet |
+|---|---|---|---|
+| P2P | 18080 | 38080 | 28080 |
+| RPC | 18089 | 38089 | 28089 |
+| ZMQ (with `--zmq`) | 18083 | 38083 | 28083 |
+| Tor P2P (with `--tor`) | 18084 | 38084 | 28084 |
+| Website | 80, 443 (unless `--no-website`) | 80, 443 | 80, 443 |
+
+Any of them can be changed with `--port`, e.g. `--port rpc=18081`.
 
 ## The node website
 
@@ -99,7 +124,8 @@ load. Roughly:
   │ RPC    https://node.example.com:18089│
   │ ZMQ    tcp://node.example.com:18083  │
   │ Tor P2P tcp://<onion>:18084          │
-  │ Type   Full node                     │
+  │ Network Mainnet                      │
+  │ Node   Full Monero node on Mainnet   │
   │ Location  Berlin, DE                 │
   │ Contact   ada@example.com            │
   └──────────────────────────────────────┘
@@ -115,8 +141,8 @@ load. Roughly:
 | `/etc/systemd/system/monerod.service` | Node service |
 | `/var/lib/monero` | Blockchain data (+ `certificates/` in domain mode) |
 | `/var/log/monero/monero.log` | Node log |
-| `/srv/monero-node` | Website files |
-| `/etc/caddy/Caddyfile` | Web server config |
+| `/srv/monero-node` | Website files (not written with `--no-website`) |
+| `/etc/caddy/Caddyfile` | Web server config (Caddy is not installed with `--no-website`) |
 | `/usr/local/bin/watch_certificates_xmr.sh` | Cert sync watcher (domain mode) |
 | `/usr/local/sbin/monerod-heartbeat.sh` | RPC liveness check |
 
