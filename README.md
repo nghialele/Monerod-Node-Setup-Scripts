@@ -26,17 +26,19 @@ All optional. Defaults are sane.
 
 | Flag | Default | Effect |
 |---|---|---|
+| `--network <name>` | `mainnet` | `mainnet`, `stagenet`, or `testnet`. Sets monerod's network flag, the default ports, and the network shown on the website. |
 | `--domain <host>` | none | Real TLS: Let's Encrypt cert for the host + RPC over TLS. Without it the site is served on the IP (self-signed on 443, plain on 80) and RPC stays plain `http://`. |
 | `--location <text>` | hidden | Shown on the node website. |
 | `--owner-name <text>` | hidden | Site contact name. |
 | `--owner-email <addr>` | hidden | Site contact `mailto:` link. |
 | `--bandwidth <text>` | hidden | Free-text bandwidth claim for the site. |
-| `--tor` | off | Tor hidden service (P2P 18084, RPC 18089, ZMQ 18083 if `--zmq`, website 80) + `tx-proxy`. |
+| `--tor` | off | Tor hidden service (P2P, RPC, ZMQ if `--zmq`, website 80) + `tx-proxy`. |
 | `--prune` | off | `prune-blockchain=true` — saves about two thirds of the disk. Not magic, just math. |
 | `--full-mem` / `--no-full-mem` | auto | RandomX full-memory mode; on by default when the server has ≥ 2861 MiB RAM. |
-| `--zmq` | off | Publish ZMQ on `tcp://0.0.0.0:18083`. |
+| `--zmq` | off | Publish ZMQ on `tcp://0.0.0.0:<zmq port>`. |
 | `--ipv6` | off | IPv6 P2P + RPC binds. |
 | `--no-ipv4` | off | Disable IPv4 binds (requires `--ipv6`, or nobody can reach you). |
+| `--port <svc>=<n>` | network defaults | Override one port: `p2p`, `rpc`, `zmq`, `torchp2p`. Repeatable. |
 | `--no-banlist` | banlist on | Skip the Boog900 ban list download. |
 | `--no-heartbeat` | heartbeat on | Skip the liveness timer. |
 | `--yes` | off | Skip the confirmation prompt. For robots and CI. |
@@ -65,15 +67,23 @@ sudo ./setup_monerod.sh --domain node.example.com --tor --zmq --prune \
   --ipv6 --yes
 ```
 
+Stagenet node (ports 38080/38089, shown as Stagenet on the site):
+
+```bash
+sudo ./setup_monerod.sh --network stagenet --location "Berlin, DE"
+```
+
 ## Ports
 
-| Port | Purpose |
-|---|---|
-| 18080/tcp | P2P |
-| 18089/tcp | RPC |
-| 80, 443/tcp | Website (always) |
-| 18083/tcp | ZMQ (only with `--zmq`) |
-| 18084/tcp | Tor P2P (only with `--tor`) |
+| Purpose | mainnet | stagenet | testnet |
+|---|---|---|---|
+| P2P | 18080 | 38080 | 28080 |
+| RPC | 18089 | 38089 | 28089 |
+| ZMQ (with `--zmq`) | 18083 | 38083 | 28083 |
+| Tor P2P (with `--tor`) | 18084 | 38084 | 28084 |
+| Website | 80, 443 | 80, 443 | 80, 443 |
+
+Any of them can be changed with `--port`, e.g. `--port rpc=18081`.
 
 ## The node website
 
@@ -99,7 +109,8 @@ load. Roughly:
   │ RPC    https://node.example.com:18089│
   │ ZMQ    tcp://node.example.com:18083  │
   │ Tor P2P tcp://<onion>:18084          │
-  │ Type   Full node                     │
+  │ Network Mainnet                      │
+  │ Node   Full Monero node on Mainnet   │
   │ Location  Berlin, DE                 │
   │ Contact   ada@example.com            │
   └──────────────────────────────────────┘
